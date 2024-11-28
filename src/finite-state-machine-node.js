@@ -7,11 +7,11 @@ const FSM_NAME = 'finite-state-machine';
 module.exports = function (RED) {
 	function StateMachineNode (config) {
 		RED.nodes.createNode(this, config);
-		
+
 		var node = this;
 		var nodeContext = this.context();
 
-		
+
 		// create new state machine
 		try {
 			nodeContext.machine = new StateMachine(JSON.parse(config.fsmDefinition));
@@ -21,9 +21,9 @@ module.exports = function (RED) {
 			node.warn('no valid definitions')
 			return;
 		}
-		
+
 		// react to all changes
-		nodeContext.allChangeListener = nodeContext.machine.observable.pipe( 
+		nodeContext.allChangeListener = nodeContext.machine.observable.pipe(
 			config.sendStateWithoutChange ? tap() : distinctUntilChanged( (curr,prev) => _.isEqual(curr.state, prev.state)) )
 			.subscribe(({state, trigger}) => {
 				setNodeStatus(state.status)
@@ -33,7 +33,7 @@ module.exports = function (RED) {
 					trigger: _.omit(trigger, "trigger") // prevent recursive adding of trigger object
 				});
 		});
-		
+
 		// send initial state after 100ms
 		if (config.sendInitialState) {
 			setTimeout( () => {
@@ -43,7 +43,7 @@ module.exports = function (RED) {
 				});
 			},100);
 		}
-		
+
 		node.on('input', function (msg) {
 			if (msg.control === 'reset') {
 				nodeContext.machine.reset();
@@ -57,8 +57,9 @@ module.exports = function (RED) {
 				return;
 			} else if (msg.control === 'query') {
 				nodeContext.machine.queryState()
+				return;
 			}
-			
+
 			var action = {
 				type: msg.topic,
 				data : _.isObject(msg.data) ? msg.data : {}
@@ -71,11 +72,11 @@ module.exports = function (RED) {
 				}
 			}
 		});
-		
+
 		node.on('close', function () {
 			nodeContext.stateChangeListener.unsubscribe();
 		});
-		
+
 		function sendOutput(state = null) {
 			node.send([state])
 		}
